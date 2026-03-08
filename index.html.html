@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AgênciaOS — Gestão Completa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#080b14;--sidebar:#0c0f1d;--card:#111827;--card2:#161e30;--border:#1e2a42;--border2:#253047;--text:#e8edf8;--muted:#4a5580;--muted2:#6b7ba8;--accent:#6366f1;--accent2:#818cf8;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--pink:#ec4899;--cyan:#06b6d4;--orange:#f97316;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;height:100vh;overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+input,select,textarea,button{font-family:'DM Sans',sans-serif;}
+button{cursor:pointer;}
+.syne{font-family:'Syne',sans-serif;}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;}
+.btn{padding:7px 16px;border-radius:8px;border:none;font-size:13px;font-weight:600;transition:all .15s;cursor:pointer;}
+.btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{background:var(--accent2);}
+.btn-ghost{background:transparent;color:var(--muted2);border:1px solid var(--border);}.btn-ghost:hover{background:var(--card2);color:var(--text);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+input[type=text],input[type=date],input[type=number],input[type=email],select,textarea{background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:13px;outline:none;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000;}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:24px;width:540px;max-height:88vh;overflow-y:auto;}
+@keyframes fi{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.fi{animation:fi .18s ease;}
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState,useMemo}=React;
+const USERS=[
+  {id:1,name:"Ana Lima",avatar:"AL",color:"#6366f1",role:"Gerente de Conta"},
+  {id:2,name:"Bruno Souza",avatar:"BS",color:"#ec4899",role:"Designer"},
+  {id:3,name:"Carol Dias",avatar:"CD",color:"#22c55e",role:"Mídia"},
+  {id:4,name:"Diego Mota",avatar:"DM",color:"#f59e0b",role:"Dev"},
+];
+const SC={todo:"#6b7ba8",in_progress:"#6366f1",review:"#f59e0b",done:"#22c55e"};
+const SL={todo:"A Fazer",in_progress:"Em Progresso",review:"Em Revisão",done:"Concluído"};
+const PC={low:"#22c55e",medium:"#f59e0b",high:"#f97316",urgent:"#ef4444"};
+const PL={low:"Baixa",medium:"Média",high:"Alta",urgent:"Urgente"};
+const PlatC={meta:"#1877f2",google:"#ea4335",tiktok:"#ff0050",linkedin:"#0a66c2"};
+const PlatE={meta:"📘",google:"🔍",tiktok:"🎵",linkedin:"💼"};
+const StageC={new:"#6b7ba8",contacted:"#06b6d4",qualified:"#6366f1",proposal:"#f59e0b",negotiation:"#f97316",won:"#22c55e",lost:"#ef4444"};
+const StageL={new:"Novo",contacted:"Contactado",qualified:"Qualificado",proposal:"Proposta",negotiation:"Negociando",won:"Ganho",lost:"Perdido"};
+const InvC={draft:"#6b7ba8",sent:"#6366f1",paid:"#22c55e",overdue:"#ef4444"};
+const ClC={active:"#22c55e",prospect:"#6366f1",paused:"#f59e0b",churned:"#ef4444"};
+const ClL={active:"Ativo",prospect:"Prospect",paused:"Pausado",churned:"Churn"};
+
+const fmt=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0}).format(n);
+const fmtN=n=>n>=1000000?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'K':String(n);
+
+const INIT={
+  projects:[
+    {id:1,name:"Campanha Verão 2025",client:"Nike Brasil",color:"#f97316",status:"in_progress",priority:"high",deadline:"2025-02-15",progress:65,manager:1,budget:45000,spent:28000,desc:"Campanha de lançamento coleção verão."},
+    {id:2,name:"Rebranding Completo",client:"Café Gourmet",color:"#6366f1",status:"review",priority:"urgent",deadline:"2025-01-30",progress:90,manager:2,budget:32000,spent:30000,desc:"Identidade visual completa."},
+    {id:3,name:"Site Institucional",client:"TechStart SA",color:"#22c55e",status:"todo",priority:"medium",deadline:"2025-03-10",progress:10,manager:4,budget:18000,spent:2000,desc:"Site responsivo com CMS."},
+    {id:4,name:"Social Media Q1",client:"Bella Moda",color:"#ec4899",status:"in_progress",priority:"medium",deadline:"2025-03-31",progress:40,manager:1,budget:12000,spent:4500,desc:"Gestão de redes sociais."},
+    {id:5,name:"Google Ads Setup",client:"Auto Premium",color:"#06b6d4",status:"done",priority:"low",deadline:"2025-01-10",progress:100,manager:3,budget:8000,spent:7800,desc:"Configuração de campanhas."},
+    {id:6,name:"Vídeo Institucional",client:"MedCare",color:"#f59e0b",status:"todo",priority:"high",deadline:"2025-04-01",progress:5,manager:2,budget:25000,spent:1200,desc:"Produção de vídeo corporativo."},
+  ],
+  tasks:[
+    {id:1,projectId:1,title:"Criação de peças para stories",assignee:2,status:"in_progress",priority:"high",due:"2025-02-01",tags:["design","social"],desc:"Pack de 10 stories"},
+    {id:2,projectId:1,title:"Configurar Meta Ads",assignee:3,status:"todo",priority:"urgent",due:"2025-02-03",tags:["mídia","ads"],desc:"Subir campanhas"},
+    {id:3,projectId:1,title:"Brief de copywriting",assignee:1,status:"done",priority:"medium",due:"2025-01-20",tags:["copy"],desc:"Textos para peças"},
+    {id:4,projectId:2,title:"Apresentação logo final",assignee:2,status:"review",priority:"urgent",due:"2025-01-28",tags:["design","branding"],desc:"3 variações"},
+    {id:5,projectId:2,title:"Manual de marca",assignee:2,status:"in_progress",priority:"high",due:"2025-02-05",tags:["design"],desc:"Brandbook completo"},
+    {id:6,projectId:3,title:"Wireframes homepage",assignee:4,status:"todo",priority:"medium",due:"2025-02-20",tags:["dev","ux"],desc:"Layout responsivo"},
+    {id:7,projectId:4,title:"Grid de conteúdo Janeiro",assignee:1,status:"done",priority:"medium",due:"2025-01-05",tags:["social","copy"],desc:"30 posts"},
+    {id:8,projectId:4,title:"Edição de reels",assignee:2,status:"in_progress",priority:"high",due:"2025-02-10",tags:["video"],desc:"4 reels mensais"},
+    {id:9,projectId:5,title:"Relatório de performance",assignee:3,status:"done",priority:"low",due:"2025-01-12",tags:["relatório"],desc:"Dashboard"},
+    {id:10,projectId:1,title:"Revisão pelo cliente",assignee:1,status:"review",priority:"high",due:"2025-02-08",tags:["aprovação"],desc:"Enviar para Nike"},
+  ],
+  clients:[
+    {id:1,name:"Nike Brasil",segment:"Esporte",status:"active",manager:1,retainer:15000,projects:2,contact:"Renata Campos",email:"renata@nike.com.br",phone:"(11)99999-0001",since:"2023-03-01",revenue:87000},
+    {id:2,name:"Café Gourmet",segment:"Food & Bev",status:"active",manager:2,retainer:8000,projects:1,contact:"João Pereira",email:"joao@cafegourmet.com",phone:"(11)98888-0002",since:"2024-01-15",revenue:32000},
+    {id:3,name:"TechStart SA",segment:"Tecnologia",status:"prospect",manager:4,retainer:0,projects:1,contact:"Marina Costa",email:"marina@techstart.io",phone:"(11)97777-0003",since:"2024-11-01",revenue:0},
+    {id:4,name:"Bella Moda",segment:"Fashion",status:"active",manager:1,retainer:5000,projects:1,contact:"Fernanda Lima",email:"fe@bellamoda.com",phone:"(11)96666-0004",since:"2023-09-10",revenue:21000},
+    {id:5,name:"Auto Premium",segment:"Automotivo",status:"paused",manager:3,retainer:0,projects:1,contact:"Carlos Rocha",email:"carlos@autopremium.com",phone:"(11)95555-0005",since:"2024-05-20",revenue:8000},
+    {id:6,name:"MedCare",segment:"Saúde",status:"active",manager:1,retainer:12000,projects:1,contact:"Dra. Paula",email:"paula@medcare.com",phone:"(11)94444-0006",since:"2024-07-01",revenue:25000},
+  ],
+  leads:[
+    {id:1,company:"Restaurante Sabor+",contact:"Marcos Silva",email:"marcos@sabor.com",source:"referral",stage:"proposal",value:18000,owner:1,notes:"Social media + ads"},
+    {id:2,company:"Academia FitLife",contact:"Roberta Melo",email:"rob@fitlife.com",source:"inbound",stage:"qualified",value:9500,owner:3,notes:"Foco em Instagram"},
+    {id:3,company:"Imobiliária Prime",contact:"André Fonseca",email:"andre@prime.imob",source:"outbound",stage:"contacted",value:32000,owner:1,notes:"Site + Google Ads"},
+    {id:4,company:"Clínica Sorriso",contact:"Dr. Paulo",email:"paulo@sorriso.med",source:"event",stage:"new",value:14000,owner:2,notes:"Indicação de evento"},
+    {id:5,company:"Pet Amor",contact:"Lúcia Torres",email:"lucia@petamor.com",source:"social",stage:"negotiation",value:7200,owner:1,notes:"Fechamento próximo"},
+    {id:6,company:"Escola Futuro",contact:"Dir. Carlos",email:"carlos@futuro.edu",source:"referral",stage:"won",value:22000,owner:4,notes:"Contrato assinado!"},
+    {id:7,company:"Loja Virtual XP",contact:"Tiago Ramos",email:"tiago@xp.loja",source:"inbound",stage:"lost",value:11000,owner:3,notes:"Optou por concorrente"},
+  ],
+  campaigns:[
+    {id:1,projectId:1,name:"Verão 2025 - Awareness",platform:"meta",status:"active",budget:15000,spend:9200,impressions:892000,clicks:14300,conversions:420,start:"2025-01-15",end:"2025-02-28"},
+    {id:2,projectId:1,name:"Verão 2025 - Conversão",platform:"google",status:"active",budget:12000,spend:7100,impressions:340000,clicks:9800,conversions:680,start:"2025-01-18",end:"2025-02-28"},
+    {id:3,projectId:5,name:"Auto Premium - Search",platform:"google",status:"ended",budget:8000,spend:7800,impressions:120000,clicks:4200,conversions:95,start:"2024-12-01",end:"2025-01-10"},
+    {id:4,projectId:4,name:"Bella Moda - Stories",platform:"meta",status:"active",budget:4500,spend:2100,impressions:210000,clicks:5600,conversions:142,start:"2025-01-20",end:"2025-03-31"},
+    {id:5,projectId:2,name:"Café - Brand Awareness",platform:"tiktok",status:"paused",budget:3000,spend:1200,impressions:450000,clicks:8900,conversions:0,start:"2025-01-01",end:"2025-01-25"},
+  ],
+  invoices:[
+    {id:1,client:"Nike Brasil",project:"Campanha Verão 2025",number:"NF-2025-001",status:"paid",total:28000,due:"2025-01-15",paid:"2025-01-14"},
+    {id:2,client:"Café Gourmet",project:"Rebranding Completo",number:"NF-2025-002",status:"sent",total:16000,due:"2025-01-30",paid:null},
+    {id:3,client:"Bella Moda",project:"Social Media Q1",number:"NF-2025-003",status:"overdue",total:5000,due:"2025-01-20",paid:null},
+    {id:4,client:"MedCare",project:"Vídeo Institucional",number:"NF-2025-004",status:"draft",total:12500,due:"2025-02-10",paid:null},
+    {id:5,client:"Nike Brasil",project:"Campanha Verão 2025",number:"NF-2025-005",status:"sent",total:17000,due:"2025-02-15",paid:null},
+    {id:6,client:"Auto Premium",project:"Google Ads Setup",number:"NF-2024-098",status:"paid",total:7800,due:"2025-01-12",paid:"2025-01-11"},
+  ],
+  timeLogs:[
+    {id:1,user:2,project:"Campanha Verão 2025",task:"Criação de peças",hours:12,date:"2025-01-20",billable:true},
+    {id:2,user:3,project:"Campanha Verão 2025",task:"Configurar Meta Ads",hours:4,date:"2025-01-21",billable:true},
+    {id:3,user:2,project:"Rebranding Completo",task:"Logo final",hours:20,date:"2025-01-18",billable:true},
+    {id:4,user:1,project:"Social Media Q1",task:"Grid Janeiro",hours:6,date:"2025-01-15",billable:true},
+    {id:5,user:4,project:"Site Institucional",task:"Wireframes",hours:8,date:"2025-01-22",billable:true},
+    {id:6,user:2,project:"Social Media Q1",task:"Edição de reels",hours:14,date:"2025-01-23",billable:false},
+  ],
+};
+
+// ── UI ATOMS ─────────────────────────────────────
+function Av({user,size=26}){
+  if(!user) return null;
+  return <div style={{width:size,height:size,borderRadius:'50%',background:user.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*.38,fontWeight:700,color:'#fff',flexShrink:0}}>{user.avatar}</div>;
+}
+function Prog({value,color="#6366f1",h=6}){
+  return <div style={{background:'var(--border)',borderRadius:999,height:h,overflow:'hidden',width:'100%'}}><div style={{width:`${Math.min(value,100)}%`,background:color,height:'100%',borderRadius:999,transition:'width .3s'}}/></div>;
+}
+function SBadge({s,map,labels}){return <span className="tag" style={{background:(map[s]||'#6b7ba8')+'22',color:map[s]||'#6b7ba8',border:`1px solid ${(map[s]||'#6b7ba8')}44`}}>{labels[s]||s}</span>;}
+
+// ── CHARTS ──────────────────────────────────────
+function BarChart({data,color="#6366f1",h=120}){
+  const max=Math.max(...data.map(d=>d.v),1);
+  return <svg width="100%" height={h} style={{overflow:"visible"}}>{data.map((d,i)=>{const bh=(d.v/max)*(h-28);const x=(i/data.length)*100;const w=100/data.length*.7;return <g key={i}><rect x={`${x+100/data.length*.15}%`} y={h-28-bh} width={`${w}%`} height={bh} fill={color} rx="3" opacity=".85"/><text x={`${x+100/data.length*.5}%`} y={h-8} textAnchor="middle" fill="#4a5580" fontSize="10">{d.l}</text></g>;})}</svg>;
+}
+function Donut({segs,size=80}){
+  let angle=-90;const r=32,cx=size/2,cy=size/2;const total=segs.reduce((s,d)=>s+d.v,0)||1;
+  return <svg width={size} height={size}>{segs.map((seg,i)=>{const sw=(seg.v/total)*360;const a1=angle*Math.PI/180;const a2=(angle+sw)*Math.PI/180;const x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);const x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);const lg=sw>180?1:0;const d=`M${cx},${cy} L${x1},${y1} A${r},${r},0,${lg},1,${x2},${y2} Z`;angle+=sw;return <path key={i} d={d} fill={seg.color}/>;})}<circle cx={cx} cy={cy} r={20} fill="var(--card)"/></svg>;
+}
+
+// ── TOPBAR ──────────────────────────────────────
+function TB({title,sub,children}){
+  return <div style={{borderBottom:'1px solid var(--border)',padding:'13px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--sidebar)',flexShrink:0}}>
+    <div><div className="syne" style={{fontSize:16,fontWeight:700}}>{title}</div>{sub&&<div style={{fontSize:11,color:'var(--muted)',marginTop:1}}>{sub}</div>}</div>
+    <div style={{display:'flex',gap:8,alignItems:'center'}}>{children}</div>
+  </div>;
+}
+
+// ── DASHBOARD ────────────────────────────────────
+function Dashboard({d}){
+  const paid=d.invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+i.total,0);
+  const pend=d.invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+i.total,0);
+  const kpis=[
+    {l:'Faturamento Recebido',v:fmt(paid),i:'💰',c:'#22c55e',t:'+12% vs mês anterior'},
+    {l:'A Receber',v:fmt(pend),i:'🧾',c:'#f59e0b',t:`${d.invoices.filter(i=>i.status!=='paid'&&i.status!=='draft').length} faturas`},
+    {l:'Projetos Ativos',v:d.projects.filter(p=>p.status==='in_progress').length,i:'🚀',c:'#6366f1',t:`${d.projects.length} total`},
+    {l:'Tarefas Abertas',v:d.tasks.filter(t=>t.status!=='done').length,i:'✅',c:'#ec4899',t:`${d.tasks.filter(t=>t.status==='done').length} concluídas`},
+    {l:'Leads em Pipeline',v:d.leads.filter(l=>!['won','lost'].includes(l.stage)).length,i:'🎯',c:'#06b6d4',t:`${d.leads.filter(l=>l.stage==='won').length} ganhos`},
+    {l:'Investimento Mídia',v:fmt(d.campaigns.reduce((s,c)=>s+c.spend,0)),i:'📢',c:'#f97316',t:'este mês'},
+  ];
+  const revData=[{l:'Set',v:38000},{l:'Out',v:52000},{l:'Nov',v:41000},{l:'Dez',v:67000},{l:'Jan',v:paid}];
+  const taskSegs=Object.entries(d.tasks.reduce((a,t)=>{a[t.status]=(a[t.status]||0)+1;return a;},{})).map(([k,v])=>({v,color:SC[k]||'#6b7ba8'}));
+  const activity=[
+    {i:'✅',t:'Logo final enviada para revisão',tm:'2h atrás',c:'#6366f1'},
+    {i:'💰',t:'NF-2025-001 paga pela Nike Brasil',tm:'5h atrás',c:'#22c55e'},
+    {i:'🎯',t:'Lead "Escola Futuro" convertido!',tm:'1d atrás',c:'#06b6d4'},
+    {i:'📢',t:'Campanha atingiu 800k impressões',tm:'1d atrás',c:'#f97316'},
+    {i:'🚀',t:'Google Ads Setup concluído',tm:'2d atrás',c:'#22c55e'},
+  ];
+  return <div style={{padding:22,overflowY:'auto',flex:1}} className="fi">
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+      {kpis.map((k,i)=><div key={i} className="card" style={{display:'flex',alignItems:'center',gap:12}}>
+        <div style={{width:42,height:42,borderRadius:11,background:k.c+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>{k.i}</div>
+        <div style={{flex:1}}><div style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>{k.l}</div><div className="syne" style={{fontSize:20,fontWeight:700,color:'var(--text)'}}>{k.v}</div><div style={{fontSize:11,color:k.c}}>{k.t}</div></div>
+      </div>)}
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:12,marginBottom:12}}>
+      <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:14,display:'flex',justifyContent:'space-between'}}><span>Faturamento Mensal</span><span style={{fontSize:11,color:'var(--muted)'}}>5 meses</span></div><BarChart data={revData} color="#6366f1" h={130}/></div>
+      <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Tarefas por Status</div>
+        <div style={{display:'flex',alignItems:'center',gap:14}}><Donut segs={taskSegs} size={90}/>
+          <div style={{flex:1}}>{Object.entries(SC).map(([k,c])=>{const n=d.tasks.filter(t=>t.status===k).length;return n?<div key={k} style={{display:'flex',justifyContent:'space-between',marginBottom:5}}><div style={{display:'flex',alignItems:'center',gap:6}}><div style={{width:8,height:8,borderRadius:2,background:c}}/><span style={{fontSize:11,color:'var(--muted2)'}}>{SL[k]}</span></div><span style={{fontSize:12,fontWeight:700}}>{n}</span></div>:null;})}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+      <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Projetos em Andamento</div>
+        {d.projects.filter(p=>['in_progress','review'].includes(p.status)).map(p=><div key={p.id} style={{marginBottom:10,paddingBottom:10,borderBottom:'1px solid var(--border)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}><div style={{display:'flex',alignItems:'center',gap:7}}><div style={{width:9,height:9,borderRadius:2,background:p.color}}/><span style={{fontSize:12,fontWeight:600}}>{p.name}</span></div><span style={{fontSize:11,color:'var(--muted)'}}>{p.progress}%</span></div>
+          <Prog value={p.progress} color={p.color}/><div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>{p.client}</div>
+        </div>)}
+      </div>
+      <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Atividade Recente</div>
+        {activity.map((a,i)=><div key={i} style={{display:'flex',gap:10,marginBottom:10,alignItems:'flex-start'}}>
+          <div style={{width:28,height:28,borderRadius:8,background:a.c+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,flexShrink:0}}>{a.i}</div>
+          <div><div style={{fontSize:11,color:'var(--text)',lineHeight:1.4}}>{a.t}</div><div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{a.tm}</div></div>
+        </div>)}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── PROJECTS ─────────────────────────────────────
+function Projects({d,sd}){
+  const [view,setView]=useState('kanban');
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({name:'',client:'',color:'#6366f1',status:'todo',priority:'medium',deadline:'',budget:'',desc:''});
+  const cols=['todo','in_progress','review','done'];
+  const save=()=>{if(!form.name)return;sd(x=>({...x,projects:[...x.projects,{...form,id:Date.now(),progress:0,manager:1,spent:0,budget:Number(form.budget)||0}]}));setModal(false);setForm({name:'',client:'',color:'#6366f1',status:'todo',priority:'medium',deadline:'',budget:'',desc:''});};
+  const move=(p,s)=>sd(x=>({...x,projects:x.projects.map(pr=>pr.id===p.id?{...pr,status:s}:pr)}));
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Projetos" sub={`${d.projects.length} projetos`}>
+      <button className="btn btn-ghost" onClick={()=>setView(v=>v==='kanban'?'list':'kanban')} style={{fontSize:12}}>{view==='kanban'?'📋 Lista':'🗂️ Kanban'}</button>
+      <button className="btn btn-primary" onClick={()=>setModal(true)}>+ Novo Projeto</button>
+    </TB>
+    <div style={{flex:1,overflow:'hidden'}}>
+    {view==='kanban'?
+      <div style={{display:'flex',gap:14,padding:18,height:'100%',overflowX:'auto'}}>
+        {cols.map(col=><div key={col} style={{minWidth:275,width:275,display:'flex',flexDirection:'column',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
+            <div style={{width:9,height:9,borderRadius:2,background:SC[col]}}/><span style={{fontSize:11,fontWeight:700,color:'var(--muted2)',textTransform:'uppercase',letterSpacing:1}}>{SL[col]}</span>
+            <span style={{marginLeft:'auto',fontSize:10,color:'var(--muted)',background:'var(--card2)',padding:'1px 7px',borderRadius:99}}>{d.projects.filter(p=>p.status===col).length}</span>
+          </div>
+          <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:9}}>
+            {d.projects.filter(p=>p.status===col).map(p=><div key={p.id} className="card" style={{borderLeft:`3px solid ${p.color}`}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:7}}>
+                <div style={{fontSize:13,fontWeight:600,lineHeight:1.3}}>{p.name}</div>
+                <span className="tag" style={{background:PC[p.priority]+'22',color:PC[p.priority],marginLeft:6,flexShrink:0,fontSize:10}}>{PL[p.priority]}</span>
+              </div>
+              <div style={{fontSize:11,color:'var(--muted)',marginBottom:9}}>{p.client}</div>
+              <Prog value={p.progress} color={p.color}/>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:7}}>
+                <Av user={USERS.find(u=>u.id===p.manager)} size={22}/>
+                <span style={{fontSize:11,color:'var(--muted)'}}>📅 {p.deadline||'—'}</span>
+              </div>
+              <div style={{display:'flex',gap:3,marginTop:9,flexWrap:'wrap'}}>
+                {cols.filter(c=>c!==col).map(c=><button key={c} onClick={()=>move(p,c)} style={{fontSize:9,padding:'2px 7px',borderRadius:4,background:SC[c]+'22',color:SC[c],border:'none',cursor:'pointer'}}>{SL[c]}</button>)}
+              </div>
+            </div>)}
+          </div>
+        </div>)}
+      </div>:
+      <div style={{padding:18,overflowY:'auto',height:'100%'}}>
+        <table style={{width:'100%',borderCollapse:'separate',borderSpacing:'0 5px'}}>
+          <thead><tr>{['Projeto','Cliente','Status','Prior.','Progresso','Orçamento','Prazo'].map(h=><th key={h} style={{fontSize:10,color:'var(--muted)',fontWeight:600,textAlign:'left',padding:'0 12px',textTransform:'uppercase',letterSpacing:.8}}>{h}</th>)}</tr></thead>
+          <tbody>{d.projects.map(p=><tr key={p.id}>
+            <td style={{padding:'10px 12px',background:'var(--card)',borderRadius:'8px 0 0 8px',borderLeft:`3px solid ${p.color}`}}><div style={{fontSize:13,fontWeight:600}}>{p.name}</div><div style={{fontSize:10,color:'var(--muted)'}}>{p.desc?.slice(0,35)}…</div></td>
+            <td style={{padding:'10px 12px',background:'var(--card)',fontSize:12,color:'var(--muted2)'}}>{p.client}</td>
+            <td style={{padding:'10px 12px',background:'var(--card)'}}><SBadge s={p.status} map={SC} labels={SL}/></td>
+            <td style={{padding:'10px 12px',background:'var(--card)'}}><span className="tag" style={{background:PC[p.priority]+'22',color:PC[p.priority],fontSize:10}}>{PL[p.priority]}</span></td>
+            <td style={{padding:'10px 12px',background:'var(--card)',minWidth:110}}><div style={{fontSize:10,color:'var(--muted2)',marginBottom:3}}>{p.progress}%</div><Prog value={p.progress} color={p.color}/></td>
+            <td style={{padding:'10px 12px',background:'var(--card)',fontSize:11}}><div>{fmt(p.budget)}</div><div style={{color:p.spent/p.budget>.9?'var(--red)':'var(--muted)',fontSize:10}}>Gasto: {fmt(p.spent)}</div></td>
+            <td style={{padding:'10px 12px',background:'var(--card)',borderRadius:'0 8px 8px 0',fontSize:11,color:'var(--muted2)'}}>{p.deadline||'—'}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(false)}><div className="modal fi" onClick={e=>e.stopPropagation()}>
+      <div className="syne" style={{fontSize:16,fontWeight:700,marginBottom:18}}>Novo Projeto</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+        {[['Nome','name','text'],['Cliente','client','text'],['Prazo','deadline','date'],['Orçamento (R$)','budget','number']].map(([l,k,t])=><div key={k}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>{l}</div><input type={t} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/></div>)}
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Status</div><select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{Object.entries(SL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Prioridade</div><select value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>{Object.entries(PL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Cor</div><input type="color" value={form.color} onChange={e=>setForm(f=>({...f,color:e.target.value}))} style={{height:38,padding:4}}/></div>
+        <div style={{gridColumn:'1/-1'}}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Descrição</div><textarea value={form.desc} onChange={e=>setForm(f=>({...f,desc:e.target.value}))} rows={2} style={{resize:'vertical'}}/></div>
+      </div>
+      <div style={{display:'flex',gap:8,marginTop:18,justifyContent:'flex-end'}}>
+        <button className="btn btn-ghost" onClick={()=>setModal(false)}>Cancelar</button>
+        <button className="btn btn-primary" onClick={save}>Criar Projeto</button>
+      </div>
+    </div></div>}
+  </div>;
+}
+
+// ── TASKS ────────────────────────────────────────
+function Tasks({d,sd}){
+  const [flt,setFlt]=useState({status:'all',priority:'all',project:'all'});
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({title:'',projectId:'',assignee:'',status:'todo',priority:'medium',due:'',desc:'',tags:''});
+  const filtered=d.tasks.filter(t=>(flt.status==='all'||t.status===flt.status)&&(flt.priority==='all'||t.priority===flt.priority)&&(flt.project==='all'||t.projectId===Number(flt.project)));
+  const save=()=>{if(!form.title)return;sd(x=>({...x,tasks:[...x.tasks,{...form,id:Date.now(),projectId:Number(form.projectId),assignee:Number(form.assignee),tags:form.tags.split(',').map(t=>t.trim()).filter(Boolean)}]}));setModal(false);};
+  const upd=(id,s)=>sd(x=>({...x,tasks:x.tasks.map(t=>t.id===id?{...t,status:s}:t)}));
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Tarefas" sub={`${filtered.length} tarefas`}><button className="btn btn-primary" onClick={()=>setModal(true)}>+ Nova Tarefa</button></TB>
+    <div style={{padding:'10px 22px',borderBottom:'1px solid var(--border)',display:'flex',gap:9,background:'var(--sidebar)',flexWrap:'wrap',alignItems:'center'}}>
+      <select value={flt.status} onChange={e=>setFlt(f=>({...f,status:e.target.value}))} style={{width:'auto'}}><option value="all">Todos Status</option>{Object.entries(SL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>
+      <select value={flt.priority} onChange={e=>setFlt(f=>({...f,priority:e.target.value}))} style={{width:'auto'}}><option value="all">Todas Prior.</option>{Object.entries(PL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>
+      <select value={flt.project} onChange={e=>setFlt(f=>({...f,project:e.target.value}))} style={{width:'auto'}}><option value="all">Todos Projetos</option>{d.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+      <div style={{marginLeft:'auto',display:'flex',gap:6}}>{Object.entries(SC).map(([k,c])=>{const n=filtered.filter(t=>t.status===k).length;return <span key={k} className="tag" style={{background:c+'22',color:c}}>{n} {SL[k]}</span>;})}</div>
+    </div>
+    <div style={{flex:1,overflowY:'auto',padding:18}}>
+      {Object.keys(SL).map(status=>{const grp=filtered.filter(t=>t.status===status);if(!grp.length)return null;return <div key={status} style={{marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:9}}><div style={{width:9,height:9,borderRadius:2,background:SC[status]}}/><span style={{fontSize:11,fontWeight:700,color:'var(--muted2)',textTransform:'uppercase',letterSpacing:1}}>{SL[status]}</span><span style={{fontSize:10,color:'var(--muted)',background:'var(--card2)',padding:'1px 6px',borderRadius:99}}>{grp.length}</span></div>
+        <div style={{display:'flex',flexDirection:'column',gap:5}}>
+          {grp.map(t=>{const proj=d.projects.find(p=>p.id===t.projectId);const user=USERS.find(u=>u.id===t.assignee);return <div key={t.id} className="card" style={{display:'flex',alignItems:'center',gap:11,padding:'9px 13px'}}>
+            <button onClick={()=>upd(t.id,t.status==='done'?'todo':'done')} style={{width:17,height:17,borderRadius:'50%',border:`2px solid ${t.status==='done'?SC.done:SC[t.status]}`,background:t.status==='done'?SC.done:'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:9}}>
+              {t.status==='done'&&'✓'}
+            </button>
+            <div style={{width:7,height:7,borderRadius:'50%',background:PC[t.priority],flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:500,color:t.status==='done'?'var(--muted)':'var(--text)',textDecoration:t.status==='done'?'line-through':'none'}}>{t.title}</div>
+              <div style={{display:'flex',gap:4,marginTop:3,flexWrap:'wrap'}}>{t.tags?.map(tag=><span key={tag} className="tag" style={{background:'var(--border)',color:'var(--muted2)',fontSize:9}}>{tag}</span>)}</div>
+            </div>
+            {proj&&<span style={{fontSize:10,color:proj.color,background:proj.color+'22',padding:'2px 7px',borderRadius:99,whiteSpace:'nowrap'}}>{proj.name.length>18?proj.name.slice(0,18)+'…':proj.name}</span>}
+            {t.due&&<div style={{fontSize:10,color:'var(--muted)',whiteSpace:'nowrap'}}>📅 {t.due}</div>}
+            <Av user={user} size={22}/>
+            <select value={t.status} onChange={e=>upd(t.id,e.target.value)} style={{width:'auto',fontSize:10,padding:'3px 5px'}}>{Object.entries(SL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select>
+          </div>;})}
+        </div>
+      </div>;})}
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(false)}><div className="modal fi" onClick={e=>e.stopPropagation()}>
+      <div className="syne" style={{fontSize:16,fontWeight:700,marginBottom:18}}>Nova Tarefa</div>
+      <div style={{display:'grid',gap:11}}>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Título</div><input type="text" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+          <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Projeto</div><select value={form.projectId} onChange={e=>setForm(f=>({...f,projectId:e.target.value}))}><option value="">Selecione</option>{d.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+          <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Responsável</div><select value={form.assignee} onChange={e=>setForm(f=>({...f,assignee:e.target.value}))}><option value="">Selecione</option>{USERS.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+          <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Status</div><select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{Object.entries(SL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+          <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Prioridade</div><select value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>{Object.entries(PL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+          <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Prazo</div><input type="date" value={form.due} onChange={e=>setForm(f=>({...f,due:e.target.value}))}/></div>
+          <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Tags (vírgula)</div><input type="text" value={form.tags} onChange={e=>setForm(f=>({...f,tags:e.target.value}))} placeholder="design, copy"/></div>
+        </div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Descrição</div><textarea value={form.desc} onChange={e=>setForm(f=>({...f,desc:e.target.value}))} rows={2} style={{resize:'vertical'}}/></div>
+      </div>
+      <div style={{display:'flex',gap:8,marginTop:18,justifyContent:'flex-end'}}><button className="btn btn-ghost" onClick={()=>setModal(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Criar Tarefa</button></div>
+    </div></div>}
+  </div>;
+}
+
+// ── CLIENTS ──────────────────────────────────────
+function Clients({d,sd}){
+  const [sel,setSel]=useState(null);
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({name:'',segment:'',status:'active',contact:'',email:'',phone:'',retainer:'',manager:1});
+  const save=()=>{if(!form.name)return;sd(x=>({...x,clients:[...x.clients,{...form,id:Date.now(),retainer:Number(form.retainer)||0,projects:0,revenue:0,since:new Date().toISOString().split('T')[0],manager:Number(form.manager)}]}));setModal(false);};
+  const cl=sel?d.clients.find(c=>c.id===sel):null;
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Clientes" sub={`${d.clients.length} clientes`}><button className="btn btn-primary" onClick={()=>setModal(true)}>+ Novo Cliente</button></TB>
+    <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      <div style={{flex:1,overflowY:'auto',padding:18}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(275px,1fr))',gap:13}}>
+          {d.clients.map(c=><div key={c.id} className="card" onClick={()=>setSel(c.id===sel?null:c.id)} style={{cursor:'pointer',border:`1px solid ${sel===c.id?'var(--accent)':'var(--border)'}`,transition:'border .15s'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:11}}>
+              <div style={{width:40,height:40,borderRadius:10,background:'var(--accent)22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,fontWeight:700,color:'var(--accent)'}}>{c.name[0]}</div>
+              <SBadge s={c.status} map={ClC} labels={ClL}/>
+            </div>
+            <div style={{fontSize:14,fontWeight:700,marginBottom:2}}>{c.name}</div>
+            <div style={{fontSize:12,color:'var(--muted)',marginBottom:11}}>{c.segment}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <div><div style={{fontSize:10,color:'var(--muted)'}}>Retainer</div><div style={{fontSize:12,fontWeight:700,color:'var(--green)'}}>{fmt(c.retainer)}/mês</div></div>
+              <div><div style={{fontSize:10,color:'var(--muted)'}}>Receita</div><div style={{fontSize:12,fontWeight:700}}>{fmt(c.revenue)}</div></div>
+            </div>
+            <div style={{marginTop:9,paddingTop:9,borderTop:'1px solid var(--border)',display:'flex',alignItems:'center',gap:7}}>
+              <Av user={USERS.find(u=>u.id===c.manager)} size={20}/>
+              <span style={{fontSize:11,color:'var(--muted)'}}>{USERS.find(u=>u.id===c.manager)?.name}</span>
+            </div>
+          </div>)}
+        </div>
+      </div>
+      {cl&&<div style={{width:310,borderLeft:'1px solid var(--border)',padding:18,overflowY:'auto',background:'var(--sidebar)'}} className="fi">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+          <div className="syne" style={{fontSize:14,fontWeight:700}}>{cl.name}</div>
+          <button onClick={()=>setSel(null)} style={{background:'none',border:'none',color:'var(--muted)',fontSize:16}}>✕</button>
+        </div>
+        <SBadge s={cl.status} map={ClC} labels={ClL}/>
+        <div style={{marginTop:14}}>
+          {[['Segmento',cl.segment],['Contato',cl.contact],['E-mail',cl.email],['Telefone',cl.phone],['Cliente desde',cl.since],['Retainer',fmt(cl.retainer)+'/mês'],['Receita total',fmt(cl.revenue)]].map(([k,v])=><div key={k} style={{marginBottom:11,paddingBottom:11,borderBottom:'1px solid var(--border)'}}><div style={{fontSize:10,color:'var(--muted)',marginBottom:2}}>{k}</div><div style={{fontSize:12,fontWeight:500}}>{v||'—'}</div></div>)}
+        </div>
+        <div style={{marginTop:4}}><div style={{fontSize:12,fontWeight:600,marginBottom:9}}>Projetos</div>
+          {d.projects.filter(p=>p.client===cl.name).map(p=><div key={p.id} style={{padding:'8px 10px',background:'var(--card)',borderRadius:8,marginBottom:5,borderLeft:`3px solid ${p.color}`}}>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:4}}>{p.name}</div><SBadge s={p.status} map={SC} labels={SL}/>
+          </div>)}
+        </div>
+      </div>}
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(false)}><div className="modal fi" onClick={e=>e.stopPropagation()}>
+      <div className="syne" style={{fontSize:16,fontWeight:700,marginBottom:18}}>Novo Cliente</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+        {[['Empresa','name','text'],['Segmento','segment','text'],['Contato','contact','text'],['E-mail','email','text'],['Telefone','phone','text'],['Retainer/mês','retainer','number']].map(([l,k,t])=><div key={k}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>{l}</div><input type={t} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/></div>)}
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Status</div><select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{Object.entries(ClL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Gerente</div><select value={form.manager} onChange={e=>setForm(f=>({...f,manager:Number(e.target.value)}))}>{USERS.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+      </div>
+      <div style={{display:'flex',gap:8,marginTop:18,justifyContent:'flex-end'}}><button className="btn btn-ghost" onClick={()=>setModal(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Salvar</button></div>
+    </div></div>}
+  </div>;
+}
+
+// ── LEADS ────────────────────────────────────────
+function Leads({d,sd}){
+  const stages=['new','contacted','qualified','proposal','negotiation','won','lost'];
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({company:'',contact:'',email:'',source:'inbound',stage:'new',value:'',owner:1,notes:''});
+  const save=()=>{if(!form.company)return;sd(x=>({...x,leads:[...x.leads,{...form,id:Date.now(),value:Number(form.value)||0,owner:Number(form.owner),created:new Date().toISOString().split('T')[0]}]}));setModal(false);};
+  const move=(l,s)=>sd(x=>({...x,leads:x.leads.map(ld=>ld.id===l.id?{...ld,stage:s}:ld)}));
+  const pipe=d.leads.filter(l=>!['won','lost'].includes(l.stage)).reduce((s,l)=>s+l.value,0);
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Pipeline de Leads" sub={`${d.leads.length} leads · ${fmt(pipe)} em pipeline`}><button className="btn btn-primary" onClick={()=>setModal(true)}>+ Novo Lead</button></TB>
+    <div style={{flex:1,overflow:'hidden'}}>
+      <div style={{display:'flex',gap:11,padding:'14px 18px',height:'100%',overflowX:'auto'}}>
+        {stages.map(stage=>{const leads=d.leads.filter(l=>l.stage===stage);const tot=leads.reduce((s,l)=>s+l.value,0);return <div key={stage} style={{minWidth:200,width:200,display:'flex',flexDirection:'column',flexShrink:0}}>
+          <div style={{marginBottom:9}}>
+            <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:3}}><div style={{width:7,height:7,borderRadius:2,background:StageC[stage]}}/><span style={{fontSize:10,fontWeight:700,color:'var(--muted2)',textTransform:'uppercase',letterSpacing:.8}}>{StageL[stage]}</span><span style={{marginLeft:'auto',fontSize:9,background:StageC[stage]+'22',color:StageC[stage],padding:'1px 5px',borderRadius:99}}>{leads.length}</span></div>
+            {tot>0&&<div style={{fontSize:10,color:'var(--muted)'}}>{fmt(tot)}</div>}
+          </div>
+          <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:7}}>
+            {leads.map(l=><div key={l.id} className="card" style={{fontSize:11,borderLeft:`3px solid ${StageC[stage]}`,padding:'10px 12px'}}>
+              <div style={{fontWeight:700,marginBottom:3}}>{l.company}</div>
+              <div style={{color:'var(--muted)',marginBottom:6}}>{l.contact}</div>
+              <div style={{fontSize:13,fontWeight:700,color:'var(--green)',marginBottom:7}}>{fmt(l.value)}</div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
+                <span className="tag" style={{background:'var(--border)',color:'var(--muted2)',fontSize:9}}>{l.source}</span>
+                <Av user={USERS.find(u=>u.id===l.owner)} size={18}/>
+              </div>
+              <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+                {stages.filter(s=>s!==stage).slice(0,3).map(s=><button key={s} onClick={()=>move(l,s)} style={{fontSize:8,padding:'1px 5px',borderRadius:3,background:StageC[s]+'22',color:StageC[s],border:'none',cursor:'pointer'}}>{StageL[s]}</button>)}
+              </div>
+            </div>)}
+          </div>
+        </div>;})}
+      </div>
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(false)}><div className="modal fi" onClick={e=>e.stopPropagation()}>
+      <div className="syne" style={{fontSize:16,fontWeight:700,marginBottom:18}}>Novo Lead</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+        {[['Empresa','company','text'],['Contato','contact','text'],['E-mail','email','text'],['Valor Est. (R$)','value','number']].map(([l,k,t])=><div key={k}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>{l}</div><input type={t} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/></div>)}
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Origem</div><select value={form.source} onChange={e=>setForm(f=>({...f,source:e.target.value}))}>{['referral','inbound','outbound','event','social'].map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Estágio</div><select value={form.stage} onChange={e=>setForm(f=>({...f,stage:e.target.value}))}>{stages.map(s=><option key={s} value={s}>{StageL[s]}</option>)}</select></div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Responsável</div><select value={form.owner} onChange={e=>setForm(f=>({...f,owner:e.target.value}))}>{USERS.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+        <div style={{gridColumn:'1/-1'}}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Notas</div><textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={2} style={{resize:'vertical'}}/></div>
+      </div>
+      <div style={{display:'flex',gap:8,marginTop:18,justifyContent:'flex-end'}}><button className="btn btn-ghost" onClick={()=>setModal(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Adicionar</button></div>
+    </div></div>}
+  </div>;
+}
+
+// ── CAMPAIGNS ────────────────────────────────────
+function Campaigns({d}){
+  const totSpend=d.campaigns.reduce((s,c)=>s+c.spend,0);
+  const totImpr=d.campaigns.reduce((s,c)=>s+c.impressions,0);
+  const totClk=d.campaigns.reduce((s,c)=>s+c.clicks,0);
+  const totConv=d.campaigns.reduce((s,c)=>s+c.conversions,0);
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Campanhas de Mídia Paga" sub={`${d.campaigns.length} campanhas`}/>
+    <div style={{flex:1,overflowY:'auto',padding:18}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:11,marginBottom:18}}>
+        {[['Investimento',fmt(totSpend),'#6366f1'],['Impressões',fmtN(totImpr),'#06b6d4'],['Cliques',fmtN(totClk),'#f59e0b'],['Conversões',totConv,'#22c55e'],['CTR Médio',(totImpr>0?(totClk/totImpr*100).toFixed(2):0)+'%','#ec4899']].map(([l,v,c],i)=><div key={i} className="card" style={{textAlign:'center'}}><div style={{fontSize:10,color:'var(--muted)',marginBottom:5}}>{l}</div><div className="syne" style={{fontSize:18,fontWeight:700,color:c}}>{v}</div></div>)}
+      </div>
+      <div className="card" style={{padding:0,overflow:'hidden'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'var(--card2)'}}>{['Campanha','Plataforma','Status','Orçamento','Gasto','Impressões','Cliques','Conv.','CTR','ROAS'].map(h=><th key={h} style={{fontSize:10,color:'var(--muted)',fontWeight:600,padding:'11px 13px',textAlign:'left',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
+          <tbody>{d.campaigns.map(c=>{
+            const ctr=c.impressions>0?(c.clicks/c.impressions*100).toFixed(2):0;
+            const roas=c.spend>0?(c.conversions*50/c.spend).toFixed(1):0;
+            const bp=Math.round(c.spend/c.budget*100);
+            const sc={active:'#22c55e',paused:'#f59e0b',ended:'#6b7ba8'};
+            return <tr key={c.id} style={{borderTop:'1px solid var(--border)'}}>
+              <td style={{padding:'11px 13px'}}><div style={{fontSize:12,fontWeight:600}}>{c.name}</div><div style={{fontSize:10,color:'var(--muted)'}}>{d.projects.find(p=>p.id===c.projectId)?.client}</div></td>
+              <td style={{padding:'11px 13px'}}><span style={{fontSize:12}}>{PlatE[c.platform]||'📌'}</span><span style={{fontSize:11,marginLeft:5,color:PlatC[c.platform],fontWeight:600,textTransform:'capitalize'}}>{c.platform}</span></td>
+              <td style={{padding:'11px 13px'}}><span className="tag" style={{background:(sc[c.status]||'#6b7ba8')+'22',color:sc[c.status]||'#6b7ba8'}}>{c.status}</span></td>
+              <td style={{padding:'11px 13px'}}><div style={{fontSize:11}}>{fmt(c.budget)}</div><Prog value={bp} color={bp>90?'var(--red)':bp>70?'var(--yellow)':'var(--accent)'}/><div style={{fontSize:9,color:'var(--muted)',marginTop:2}}>{bp}%</div></td>
+              <td style={{padding:'11px 13px',fontSize:12,fontWeight:600,color:bp>90?'var(--red)':'var(--text)'}}>{fmt(c.spend)}</td>
+              <td style={{padding:'11px 13px',fontSize:12,color:'var(--muted2)'}}>{fmtN(c.impressions)}</td>
+              <td style={{padding:'11px 13px',fontSize:12,color:'var(--muted2)'}}>{fmtN(c.clicks)}</td>
+              <td style={{padding:'11px 13px',fontSize:12,fontWeight:700,color:'var(--green)'}}>{c.conversions}</td>
+              <td style={{padding:'11px 13px',fontSize:12}}>{ctr}%</td>
+              <td style={{padding:'11px 13px',fontSize:13,fontWeight:800,color:roas>3?'var(--green)':roas>1?'var(--yellow)':'var(--red)'}}>{roas}x</td>
+            </tr>;})}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>;
+}
+
+// ── REPORTS ──────────────────────────────────────
+function Reports({d}){
+  const [tab,setTab]=useState('overview');
+  const tabs=[{id:'overview',l:'Visão Geral'},{id:'projects',l:'Projetos'},{id:'leads',l:'Leads'},{id:'media',l:'Mídia'}];
+  const paid=d.invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+i.total,0);
+  const revData=[{l:'Set',v:38000},{l:'Out',v:52000},{l:'Nov',v:41000},{l:'Dez',v:67000},{l:'Jan',v:paid}];
+  const byUser=USERS.map(u=>({l:u.name.split(' ')[0],v:d.tasks.filter(t=>t.assignee===u.id).length,c:u.color}));
+  const byStatus=Object.entries(d.projects.reduce((a,p)=>{a[p.status]=(a[p.status]||0)+1;return a;},{})).map(([k,v])=>({l:SL[k],v,color:SC[k]}));
+  const byStage=['new','contacted','qualified','proposal','negotiation','won','lost'].map(s=>({l:StageL[s],v:d.leads.filter(l=>l.stage===s).length,c:StageC[s]})).filter(s=>s.v>0);
+  const byPlat=Object.entries(d.campaigns.reduce((a,c)=>{a[c.platform]=(a[c.platform]||0)+c.spend;return a;},{})).map(([k,v])=>({l:k,v,c:PlatC[k]||'#6366f1'}));
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Relatórios & Analytics">
+      <div style={{display:'flex',gap:4}}>{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className="btn" style={{fontSize:11,background:tab===t.id?'var(--accent)':'transparent',color:tab===t.id?'#fff':'var(--muted2)',border:`1px solid ${tab===t.id?'var(--accent)':'var(--border)'}`}}>{t.l}</button>)}</div>
+    </TB>
+    <div style={{flex:1,overflowY:'auto',padding:18}} className="fi">
+      {tab==='overview'&&<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:11,marginBottom:18}}>
+          {[['Receita Total',fmt(paid),'💰','#22c55e'],['Clientes Ativos',d.clients.filter(c=>c.status==='active').length,'🏢','#6366f1'],['Conclusão de Tasks',Math.round(d.tasks.filter(t=>t.status==='done').length/d.tasks.length*100)+'%','✅','#06b6d4'],['Taxa de Conversão',Math.round(d.leads.filter(l=>l.stage==='won').length/d.leads.length*100)+'%','🎯','#f59e0b']].map(([l,v,i,c])=><div key={l} className="card" style={{display:'flex',alignItems:'center',gap:11}}><div style={{width:38,height:38,borderRadius:10,background:c+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{i}</div><div><div style={{fontSize:10,color:'var(--muted)'}}>{l}</div><div className="syne" style={{fontSize:18,fontWeight:700,color:c}}>{v}</div></div></div>)}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:11,marginBottom:11}}>
+          <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:13}}>Faturamento Mensal</div><BarChart data={revData} color="#6366f1" h={140}/></div>
+          <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:13}}>Tarefas por Pessoa</div>
+            {byUser.map((u,i)=><div key={i} style={{marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{color:'var(--muted2)'}}>{u.l}</span><span style={{fontWeight:700}}>{u.v}</span></div><Prog value={u.v/Math.max(...byUser.map(x=>x.v),1)*100} color={u.c}/></div>)}
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+          <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:13}}>Projetos por Status</div>
+            <div style={{display:'flex',alignItems:'center',gap:18}}><Donut segs={byStatus.map(p=>({v:p.v,color:p.color}))} size={90}/>
+              <div style={{flex:1}}>{byStatus.map((p,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',marginBottom:7}}><div style={{display:'flex',alignItems:'center',gap:7}}><div style={{width:9,height:9,borderRadius:2,background:p.color}}/><span style={{fontSize:11,color:'var(--muted2)'}}>{p.l}</span></div><span style={{fontSize:13,fontWeight:700}}>{p.v}</span></div>)}</div>
+            </div>
+          </div>
+          <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:13}}>Investimento por Plataforma</div>
+            {byPlat.map((p,i)=><div key={i} style={{marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{color:p.c,fontWeight:600}}>{PlatE[p.l]||'📌'} {p.l}</span><span style={{fontWeight:700}}>{fmt(p.v)}</span></div><Prog value={p.v/Math.max(...byPlat.map(x=>x.v),1)*100} color={p.c}/></div>)}
+          </div>
+        </div>
+      </>}
+      {tab==='projects'&&<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:13}}>
+        {d.projects.map(p=><div key={p.id} className="card">
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:9}}><div style={{fontSize:13,fontWeight:700,color:p.color}}>{p.name}</div><SBadge s={p.status} map={SC} labels={SL}/></div>
+          <div style={{fontSize:11,color:'var(--muted)',marginBottom:9}}>{p.client}</div>
+          <div style={{marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',fontSize:10,marginBottom:3}}><span style={{color:'var(--muted)'}}>Progresso</span><span style={{fontWeight:700}}>{p.progress}%</span></div><Prog value={p.progress} color={p.color}/></div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+            {[['Orçamento',fmt(p.budget),'var(--text)'],['Gasto',fmt(p.spent),p.spent/p.budget>.9?'var(--red)':'var(--green)'],['Tarefas',d.tasks.filter(t=>t.projectId===p.id).length,'var(--text)'],['Prazo',p.deadline||'—','var(--muted2)']].map(([l,v,c])=><div key={l}><div style={{fontSize:9,color:'var(--muted)'}}>{l}</div><div style={{fontSize:12,fontWeight:600,color:c}}>{v}</div></div>)}
+          </div>
+        </div>)}
+      </div>}
+      {tab==='leads'&&<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:11,marginBottom:18}}>
+          {[['Total','#6366f1',d.leads.length],['Em Pipeline','#f59e0b',d.leads.filter(l=>!['won','lost'].includes(l.stage)).length],['Ganhos','#22c55e',d.leads.filter(l=>l.stage==='won').length],['Perdidos','#ef4444',d.leads.filter(l=>l.stage==='lost').length]].map(([l,c,v])=><div key={l} className="card" style={{textAlign:'center'}}><div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{l}</div><div className="syne" style={{fontSize:26,fontWeight:800,color:c}}>{v}</div></div>)}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:13}}>
+          <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:13}}>Funil de Leads</div>{byStage.map((s,i)=><div key={i} style={{marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}><span style={{color:s.c,fontWeight:600}}>{s.l}</span><span style={{fontWeight:700}}>{s.v}</span></div><Prog value={s.v/d.leads.length*100} color={s.c}/></div>)}</div>
+          <div className="card"><div style={{fontSize:13,fontWeight:600,marginBottom:13}}>Valor por Estágio</div>
+            {['proposal','negotiation','won'].map(stage=>{const leads=d.leads.filter(l=>l.stage===stage);const tot=leads.reduce((s,l)=>s+l.value,0);return tot>0&&<div key={stage} style={{marginBottom:11,padding:'10px',background:'var(--card2)',borderRadius:8,borderLeft:`3px solid ${StageC[stage]}`}}><div style={{fontSize:11,color:'var(--muted2)',marginBottom:3}}>{StageL[stage]}</div><div className="syne" style={{fontSize:17,fontWeight:700,color:StageC[stage]}}>{fmt(tot)}</div><div style={{fontSize:10,color:'var(--muted)'}}>{leads.length} leads</div></div>;})}
+          </div>
+        </div>
+      </>}
+      {tab==='media'&&<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:11,marginBottom:18}}>
+          {[['Investimento',fmt(d.campaigns.reduce((s,c)=>s+c.spend,0)),'#6366f1'],['Impressões',fmtN(d.campaigns.reduce((s,c)=>s+c.impressions,0)),'#06b6d4'],['Cliques',fmtN(d.campaigns.reduce((s,c)=>s+c.clicks,0)),'#f59e0b'],['Conversões',d.campaigns.reduce((s,c)=>s+c.conversions,0),'#22c55e'],['CTR Médio',(d.campaigns.reduce((s,c)=>s+c.clicks,0)/d.campaigns.reduce((s,c)=>s+c.impressions,0)*100).toFixed(2)+'%','#ec4899']].map(([l,v,c],i)=><div key={i} className="card" style={{textAlign:'center'}}><div style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>{l}</div><div className="syne" style={{fontSize:17,fontWeight:700,color:c}}>{v}</div></div>)}
+        </div>
+        {d.campaigns.map(c=>{const ctr=(c.clicks/c.impressions*100).toFixed(2);const roas=(c.conversions*50/c.spend).toFixed(1);return <div key={c.id} className="card" style={{marginBottom:11,borderLeft:`4px solid ${PlatC[c.platform]||'#6366f1'}`}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:9}}><div><div style={{fontSize:13,fontWeight:600}}>{c.name}</div><div style={{fontSize:11,color:'var(--muted)'}}>{PlatE[c.platform]} {c.platform}</div></div><div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'var(--green)'}}>ROAS {roas}x</div><div style={{fontSize:11,color:'var(--muted)'}}>CTR {ctr}%</div></div></div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:9}}>
+            {[['Gasto',fmt(c.spend)],['Impressões',fmtN(c.impressions)],['Cliques',fmtN(c.clicks)],['Conv.',c.conversions]].map(([l,v])=><div key={l} style={{textAlign:'center',background:'var(--card2)',borderRadius:6,padding:'6px'}}><div style={{fontSize:9,color:'var(--muted)'}}>{l}</div><div style={{fontSize:12,fontWeight:700}}>{v}</div></div>)}
+          </div>
+          <Prog value={c.spend/c.budget*100} color={PlatC[c.platform]||'#6366f1'}/>
+          <div style={{fontSize:9,color:'var(--muted)',marginTop:3}}>{Math.round(c.spend/c.budget*100)}% do orçamento</div>
+        </div>;})}
+      </>}
+    </div>
+  </div>;
+}
+
+// ── FINANCE ──────────────────────────────────────
+function Finance({d,sd}){
+  const [tab,setTab]=useState('invoices');
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({client:'',project:'',total:'',due:'',notes:''});
+  const save=()=>{if(!form.client||!form.total)return;const num=`NF-2025-${String(d.invoices.length+1).padStart(3,'0')}`;sd(x=>({...x,invoices:[...x.invoices,{...form,id:Date.now(),number:num,status:'draft',total:Number(form.total),paid:null}]}));setModal(false);};
+  const upd=(id,s)=>sd(x=>({...x,invoices:x.invoices.map(i=>i.id===id?{...i,status:s,paid:s==='paid'?new Date().toISOString().split('T')[0]:i.paid}:i)}));
+  const totPaid=d.invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+i.total,0);
+  const totPend=d.invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+i.total,0);
+  const totH=d.timeLogs.reduce((s,l)=>s+l.hours,0);
+  const billH=d.timeLogs.filter(l=>l.billable).reduce((s,l)=>s+l.hours,0);
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Financeiro">
+      <div style={{display:'flex',gap:4}}>{[{id:'invoices',l:'Faturas'},{id:'timelogs',l:'Horas'}].map(t=><button key={t.id} onClick={()=>setTab(t.id)} className="btn" style={{fontSize:11,background:tab===t.id?'var(--accent)':'transparent',color:tab===t.id?'#fff':'var(--muted2)',border:`1px solid ${tab===t.id?'var(--accent)':'var(--border)'}`}}>{t.l}</button>)}</div>
+      {tab==='invoices'&&<button className="btn btn-primary" onClick={()=>setModal(true)}>+ Nova Fatura</button>}
+    </TB>
+    <div style={{flex:1,overflowY:'auto',padding:18}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:11,marginBottom:18}}>
+        {tab==='invoices'?[['Recebido',fmt(totPaid),'✅','#22c55e'],['A Receber',fmt(totPend),'⏳','#f59e0b'],['Em Atraso',fmt(d.invoices.filter(i=>i.status==='overdue').reduce((s,i)=>s+i.total,0)),'⚠️','#ef4444'],['Total Emitido',fmt(d.invoices.reduce((s,i)=>s+i.total,0)),'🧾','#6366f1']]:[['Total de Horas',`${totH}h`,'⏱️','#6366f1'],['Horas Faturáveis',`${billH}h`,'💰','#22c55e'],['Taxa Billing',`${Math.round(billH/totH*100)}%`,'📊','#f59e0b'],['Custo Est.',fmt(billH*150),'💵','#ec4899']].map(([l,v,i,c])=><div key={l} className="card" style={{display:'flex',alignItems:'center',gap:11}}><div style={{width:36,height:36,borderRadius:9,background:c+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>{i}</div><div><div style={{fontSize:10,color:'var(--muted)'}}>{l}</div><div className="syne" style={{fontSize:17,fontWeight:700,color:c}}>{v}</div></div></div>)}
+      </div>
+      {tab==='invoices'?<div className="card" style={{padding:0,overflow:'hidden'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'var(--card2)'}}>{['Número','Cliente','Projeto','Valor','Status','Vencimento','Pago','Ações'].map(h=><th key={h} style={{fontSize:10,color:'var(--muted)',fontWeight:600,padding:'11px 13px',textAlign:'left'}}>{h}</th>)}</tr></thead>
+          <tbody>{d.invoices.map(inv=><tr key={inv.id} style={{borderTop:'1px solid var(--border)'}}>
+            <td style={{padding:'11px 13px',fontSize:12,fontWeight:700,color:'var(--accent)'}}>{inv.number}</td>
+            <td style={{padding:'11px 13px',fontSize:12,fontWeight:600}}>{inv.client}</td>
+            <td style={{padding:'11px 13px',fontSize:10,color:'var(--muted)'}}>{inv.project}</td>
+            <td style={{padding:'11px 13px',fontSize:13,fontWeight:700,color:'var(--green)'}}>{fmt(inv.total)}</td>
+            <td style={{padding:'11px 13px'}}><span className="tag" style={{background:InvC[inv.status]+'22',color:InvC[inv.status]}}>{inv.status}</span></td>
+            <td style={{padding:'11px 13px',fontSize:11,color:inv.status==='overdue'?'var(--red)':'var(--muted2)'}}>{inv.due}</td>
+            <td style={{padding:'11px 13px',fontSize:11,color:'var(--muted)'}}>{inv.paid||'—'}</td>
+            <td style={{padding:'11px 13px'}}><div style={{display:'flex',gap:4}}>
+              {inv.status!=='paid'&&<button onClick={()=>upd(inv.id,'paid')} style={{fontSize:10,padding:'3px 7px',borderRadius:4,background:'#22c55e22',color:'var(--green)',border:'none',cursor:'pointer'}}>✓ Pago</button>}
+              {inv.status==='draft'&&<button onClick={()=>upd(inv.id,'sent')} style={{fontSize:10,padding:'3px 7px',borderRadius:4,background:'var(--accent)22',color:'var(--accent)',border:'none',cursor:'pointer'}}>Enviar</button>}
+            </div></td>
+          </tr>)}</tbody>
+        </table>
+      </div>:
+      <div className="card" style={{padding:0,overflow:'hidden'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr style={{background:'var(--card2)'}}>{['Profissional','Projeto','Tarefa','Horas','Data','Faturável'].map(h=><th key={h} style={{fontSize:10,color:'var(--muted)',fontWeight:600,padding:'11px 13px',textAlign:'left'}}>{h}</th>)}</tr></thead>
+          <tbody>{d.timeLogs.map(log=>{const user=USERS.find(u=>u.id===log.user);return <tr key={log.id} style={{borderTop:'1px solid var(--border)'}}>
+            <td style={{padding:'11px 13px'}}><div style={{display:'flex',alignItems:'center',gap:7}}><Av user={user} size={22}/><span style={{fontSize:12,fontWeight:600}}>{user?.name}</span></div></td>
+            <td style={{padding:'11px 13px',fontSize:11}}>{log.project}</td>
+            <td style={{padding:'11px 13px',fontSize:10,color:'var(--muted)'}}>{log.task}</td>
+            <td style={{padding:'11px 13px',fontSize:13,fontWeight:700,color:'var(--accent)'}}>{log.hours}h</td>
+            <td style={{padding:'11px 13px',fontSize:11,color:'var(--muted2)'}}>{log.date}</td>
+            <td style={{padding:'11px 13px'}}><span className="tag" style={{background:log.billable?'#22c55e22':'#6b7ba822',color:log.billable?'#22c55e':'#6b7ba8'}}>{log.billable?'Sim':'Não'}</span></td>
+          </tr>;})}
+          </tbody>
+        </table>
+      </div>}
+    </div>
+    {modal&&<div className="modal-overlay" onClick={()=>setModal(false)}><div className="modal fi" onClick={e=>e.stopPropagation()}>
+      <div className="syne" style={{fontSize:16,fontWeight:700,marginBottom:18}}>Nova Fatura</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Cliente</div><select value={form.client} onChange={e=>setForm(f=>({...f,client:e.target.value}))}><option value="">Selecione</option>{d.clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
+        <div><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Projeto</div><select value={form.project} onChange={e=>setForm(f=>({...f,project:e.target.value}))}><option value="">Selecione</option>{d.projects.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
+        {[['Valor (R$)','total','number'],['Vencimento','due','date']].map(([l,k,t])=><div key={k}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>{l}</div><input type={t} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/></div>)}
+        <div style={{gridColumn:'1/-1'}}><div style={{fontSize:12,color:'var(--muted)',marginBottom:5}}>Observações</div><textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={2} style={{resize:'vertical'}}/></div>
+      </div>
+      <div style={{display:'flex',gap:8,marginTop:18,justifyContent:'flex-end'}}><button className="btn btn-ghost" onClick={()=>setModal(false)}>Cancelar</button><button className="btn btn-primary" onClick={save}>Criar Fatura</button></div>
+    </div></div>}
+  </div>;
+}
+
+// ── CALENDAR ─────────────────────────────────────
+function Calendar({d}){
+  const today=new Date();
+  const [cur,setCur]=useState({y:today.getFullYear(),m:today.getMonth()});
+  const MN=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const days=new Date(cur.y,cur.m+1,0).getDate();
+  const start=new Date(cur.y,cur.m,1).getDay();
+  const tbd={},pbd={};
+  d.tasks.forEach(t=>{if(t.due){tbd[t.due]=tbd[t.due]||[];tbd[t.due].push(t);}});
+  d.projects.forEach(p=>{if(p.deadline){pbd[p.deadline]=pbd[p.deadline]||[];pbd[p.deadline].push(p);}});
+  return <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <TB title="Calendário" sub="Prazos e entregas">
+      <button className="btn btn-ghost" onClick={()=>setCur(c=>c.m===0?{y:c.y-1,m:11}:{...c,m:c.m-1})}>‹</button>
+      <span style={{fontSize:13,fontWeight:600,minWidth:150,textAlign:'center'}}>{MN[cur.m]} {cur.y}</span>
+      <button className="btn btn-ghost" onClick={()=>setCur(c=>c.m===11?{y:c.y+1,m:0}:{...c,m:c.m+1})}>›</button>
+    </TB>
+    <div style={{flex:1,overflowY:'auto',padding:18}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:2}}>
+        {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(dd=><div key={dd} style={{textAlign:'center',fontSize:10,fontWeight:700,color:'var(--muted)',padding:'7px 0',textTransform:'uppercase',letterSpacing:1}}>{dd}</div>)}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+        {Array.from({length:start}).map((_,i)=><div key={'e'+i} style={{minHeight:85,background:'var(--card2)',borderRadius:6,opacity:.25}}/>)}
+        {Array.from({length:days}).map((_,i)=>{const day=i+1;const ds=`${cur.y}-${String(cur.m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;const isT=today.getDate()===day&&today.getMonth()===cur.m&&today.getFullYear()===cur.y;const tasks=tbd[ds]||[];const projs=pbd[ds]||[];
+          return <div key={day} style={{minHeight:85,background:'var(--card)',borderRadius:6,padding:'5px',border:`1px solid ${isT?'var(--accent)':'var(--border)'}`}}>
+            <div style={{fontSize:11,fontWeight:isT?700:400,color:isT?'var(--accent)':'var(--muted2)',marginBottom:3}}>{day}</div>
+            {projs.map(p=><div key={p.id} style={{fontSize:8,background:p.color+'33',color:p.color,borderRadius:3,padding:'1px 3px',marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:700}}>🚀 {p.name}</div>)}
+            {tasks.slice(0,2).map(t=><div key={t.id} style={{fontSize:8,background:SC[t.status]+'22',color:SC[t.status],borderRadius:3,padding:'1px 3px',marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✅ {t.title}</div>)}
+            {tasks.length>2&&<div style={{fontSize:8,color:'var(--muted)'}}>+{tasks.length-2}</div>}
+          </div>;})}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── SIDEBAR + APP ────────────────────────────────
+const NAV=[{id:'dashboard',i:'⚡',l:'Dashboard'},{id:'projects',i:'🚀',l:'Projetos'},{id:'tasks',i:'✅',l:'Tarefas'},{id:'clients',i:'🏢',l:'Clientes'},{id:'leads',i:'🎯',l:'Leads'},{id:'campaigns',i:'📢',l:'Campanhas'},{id:'reports',i:'📊',l:'Relatórios'},{id:'finance',i:'💰',l:'Financeiro'},{id:'calendar',i:'📅',l:'Calendário'}];
+
+function App(){
+  const [page,setPage]=useState('dashboard');
+  const [data,setData]=useState(INIT);
+  const views={dashboard:<Dashboard d={data}/>,projects:<Projects d={data} sd={setData}/>,tasks:<Tasks d={data} sd={setData}/>,clients:<Clients d={data} sd={setData}/>,leads:<Leads d={data} sd={setData}/>,campaigns:<Campaigns d={data}/>,reports:<Reports d={data}/>,finance:<Finance d={data} sd={setData}/>,calendar:<Calendar d={data}/>};
+  return <div style={{display:'flex',height:'100vh',overflow:'hidden'}}>
+    <div style={{width:210,background:'var(--sidebar)',borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',flexShrink:0}}>
+      <div style={{padding:'18px 14px',borderBottom:'1px solid var(--border)'}}>
+        <div className="syne" style={{fontSize:17,fontWeight:800,letterSpacing:-.5}}><span style={{color:'var(--accent)'}}>Agência</span>OS</div>
+        <div style={{fontSize:10,color:'var(--muted)',marginTop:2}}>Gestão Completa</div>
+      </div>
+      <nav style={{flex:1,padding:'10px 6px',overflowY:'auto'}}>
+        {NAV.map(n=><button key={n.id} onClick={()=>setPage(n.id)} style={{width:'100%',display:'flex',alignItems:'center',gap:9,padding:'9px 12px',borderRadius:8,border:'none',background:page===n.id?'var(--accent)':'transparent',color:page===n.id?'#fff':'var(--muted2)',fontSize:12,fontWeight:page===n.id?600:400,marginBottom:1,transition:'all .12s',textAlign:'left',cursor:'pointer'}}><span style={{fontSize:15}}>{n.i}</span>{n.l}</button>)}
+      </nav>
+      <div style={{padding:10,borderTop:'1px solid var(--border)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,padding:'7px 10px',borderRadius:8,background:'var(--card2)'}}>
+          <Av user={USERS[0]} size={28}/>
+          <div><div style={{fontSize:12,fontWeight:600}}>{USERS[0].name}</div><div style={{fontSize:9,color:'var(--muted)'}}>{USERS[0].role}</div></div>
+        </div>
+      </div>
+    </div>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}} className="fi">
+      {views[page]}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
